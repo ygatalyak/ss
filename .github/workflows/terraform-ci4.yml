@@ -1,0 +1,48 @@
+name: Terraform CI/CD
+
+on:
+  pull_request:
+    branches:
+      - main
+
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    if: >
+      github.event_name != 'workflow_dispatch' ||
+      github.ref == 'refs/heads/main'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: ${{ fromJSON(
+          github.event_name == 'workflow_dispatch'
+          && format('["{0}"]', inputs.environment)
+          || '["dev","qa","prod"]'
+        ) }}
+
+    name: Terraform ${{ matrix.environment }}
+
+    uses: ./.github/workflows/terraform-environment.yml
+
+    with:
+      environment: ${{ matrix.environment }}
+
+    secrets: inherit
