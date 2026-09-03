@@ -1,0 +1,127 @@
+```yaml
+name: Terraform Environment
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: Environment name
+        required: true
+        type: string
+
+      directory:
+        description: Terraform directory
+        required: true
+        type: string
+
+      workspace:
+        description: Terraform Cloud workspace
+        required: true
+        type: string
+
+      apply:
+        description: Whether apply should run
+        required: true
+        type: boolean
+
+
+jobs:
+
+  # ---------------------------------------------------------------------------
+  # VALIDATE
+  # ---------------------------------------------------------------------------
+  validate:
+    name: Validate - ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fake Terraform Validate
+        run: |
+          echo "============================================"
+          echo "Terraform VALIDATE"
+          echo "============================================"
+          echo "Environment : ${{ inputs.environment }}"
+          echo "Directory   : ${{ inputs.directory }}"
+          echo "Workspace   : ${{ inputs.workspace }}"
+          echo
+          echo "terraform init -backend=false"
+          echo "terraform validate"
+          echo
+          echo "Validation successful"
+
+
+  # ---------------------------------------------------------------------------
+  # PLAN
+  # ---------------------------------------------------------------------------
+  plan:
+    name: Plan - ${{ inputs.environment }}
+    needs:
+      - validate
+
+    runs-on: ubuntu-latest
+
+    outputs:
+      run_id: ${{ steps.plan.outputs.run_id }}
+
+    steps:
+      - name: Fake Terraform Plan
+        id: plan
+        run: |
+          echo "============================================"
+          echo "Terraform PLAN"
+          echo "============================================"
+          echo "Environment : ${{ inputs.environment }}"
+          echo "Directory   : ${{ inputs.directory }}"
+          echo "Workspace   : ${{ inputs.workspace }}"
+          echo
+          echo "terraform plan"
+          echo
+          echo "Plan:"
+          echo "  + 2 to add"
+          echo "  ~ 1 to change"
+          echo "  - 0 to destroy"
+
+          # Simulate Terraform Cloud run ID.
+          echo "run_id=fake-run-${{ inputs.environment }}-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+
+
+  # ---------------------------------------------------------------------------
+  # APPLY
+  # ---------------------------------------------------------------------------
+  apply:
+    name: Apply - ${{ inputs.environment }}
+
+    needs:
+      - plan
+
+    if: ${{ inputs.apply }}
+
+    runs-on: ubuntu-latest
+
+    # GitHub Environment controls approval.
+    #
+    # dev  -> no required reviewers -> automatic
+    # qa   -> required reviewer      -> manual approval
+    # prod -> required reviewer      -> manual approval
+    environment:
+      name: ${{ inputs.environment }}
+
+    concurrency:
+      group: terraform-${{ inputs.environment }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Fake Terraform Apply
+        run: |
+          echo "============================================"
+          echo "Terraform APPLY"
+          echo "============================================"
+          echo "Environment : ${{ inputs.environment }}"
+          echo "Directory   : ${{ inputs.directory }}"
+          echo "Workspace   : ${{ inputs.workspace }}"
+          echo "Run ID      : ${{ needs.plan.outputs.run_id }}"
+          echo
+          echo "terraform apply"
+          echo
+          echo "Apply successful"
+```
