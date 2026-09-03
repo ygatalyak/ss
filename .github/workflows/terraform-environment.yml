@@ -1,0 +1,119 @@
+name: Terraform Environment
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+
+
+jobs:
+
+  # ============================================================
+  # VALIDATE
+  # ============================================================
+
+  validate:
+    name: Validate ${{ inputs.environment }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Terraform validate
+        run: |
+          echo "================================="
+          echo "VALIDATE ${{ inputs.environment }}"
+          echo "================================="
+
+          echo "Directory: infra/${{ inputs.environment }}"
+          echo "Workspace: nextech-${{ inputs.environment }}"
+
+          echo
+          echo "terraform init -backend=false"
+          echo "terraform validate"
+
+
+  # ============================================================
+  # PLAN
+  # ============================================================
+
+  plan:
+    name: Plan ${{ inputs.environment }}
+
+    needs:
+      - validate
+
+    runs-on: ubuntu-latest
+
+    outputs:
+      run_id: ${{ steps.plan.outputs.run_id }}
+
+    steps:
+      - name: Terraform plan
+        id: plan
+        run: |
+          echo "================================="
+          echo "PLAN ${{ inputs.environment }}"
+          echo "================================="
+
+          echo "Directory: infra/${{ inputs.environment }}"
+          echo "Workspace: nextech-${{ inputs.environment }}"
+
+          echo
+          echo "terraform plan"
+
+          echo
+          echo "+ 2 to add"
+          echo "~ 1 to change"
+          echo "- 0 to destroy"
+
+          RUN_ID="fake-run-${{ inputs.environment }}-${{ github.run_id }}"
+
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+
+
+  # ============================================================
+  # APPLY
+  # ============================================================
+
+  apply:
+    name: Apply ${{ inputs.environment }}
+
+    needs:
+      - plan
+
+    # PR = validate + plan only
+    # main push/manual = apply
+    if: github.event_name != 'pull_request'
+
+    runs-on: ubuntu-latest
+
+    # GitHub Environment:
+    #
+    # dev  -> no approval
+    # qa   -> approval
+    # prod -> approval
+    environment:
+      name: ${{ inputs.environment }}
+
+    concurrency:
+      group: terraform-${{ inputs.environment }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Terraform apply
+        run: |
+          echo "================================="
+          echo "APPLY ${{ inputs.environment }}"
+          echo "================================="
+
+          echo "Directory: infra/${{ inputs.environment }}"
+          echo "Workspace: nextech-${{ inputs.environment }}"
+
+          echo
+          echo "Run ID:"
+          echo "${{ needs.plan.outputs.run_id }}"
+
+          echo
+          echo "terraform apply"
