@@ -1,0 +1,242 @@
+name: Terraform CI/CD
+
+on:
+  pull_request:
+    branches:
+      - main
+
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
+
+permissions:
+  contents: read
+
+
+jobs:
+
+  # ===========================================================================
+  # DEV
+  # ===========================================================================
+
+  validate-dev:
+    name: Validate dev
+
+    if: >
+      github.event_name != 'workflow_dispatch' ||
+      (
+        github.ref == 'refs/heads/main' &&
+        inputs.environment == 'dev'
+      )
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Terraform validate
+        run: |
+          echo "Environment: dev"
+          echo "Directory: infra/dev"
+          echo "Workspace: nextech-dev"
+          echo
+          echo "terraform init -backend=false"
+          echo "terraform validate"
+
+
+  plan-dev:
+    name: Plan dev
+    needs:
+      - validate-dev
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Terraform plan
+        run: |
+          echo "Environment: dev"
+          echo
+          echo "terraform plan"
+          echo
+          echo "+ 2 to add"
+          echo "~ 1 to change"
+          echo "- 0 to destroy"
+
+
+  apply-dev:
+    name: Apply dev
+    needs:
+      - plan-dev
+
+    if: github.event_name != 'pull_request'
+
+    runs-on: ubuntu-latest
+
+    environment:
+      name: dev
+
+    concurrency:
+      group: terraform-dev
+      cancel-in-progress: false
+
+    steps:
+      - name: Terraform apply
+        run: |
+          echo "Environment: dev"
+          echo
+          echo "terraform apply"
+          echo
+          echo "DEV applied successfully"
+
+
+  # ===========================================================================
+  # QA
+  # ===========================================================================
+
+  validate-qa:
+    name: Validate qa
+
+    if: >
+      github.event_name != 'workflow_dispatch' ||
+      (
+        github.ref == 'refs/heads/main' &&
+        inputs.environment == 'qa'
+      )
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Terraform validate
+        run: |
+          echo "Environment: qa"
+          echo "Directory: infra/qa"
+          echo "Workspace: nextech-qa"
+          echo
+          echo "terraform init -backend=false"
+          echo "terraform validate"
+
+
+  plan-qa:
+    name: Plan qa
+    needs:
+      - validate-qa
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Terraform plan
+        run: |
+          echo "Environment: qa"
+          echo
+          echo "terraform plan"
+          echo
+          echo "+ 3 to add"
+          echo "~ 0 to change"
+          echo "- 1 to destroy"
+
+
+  apply-qa:
+    name: Apply qa
+    needs:
+      - plan-qa
+
+    if: github.event_name != 'pull_request'
+
+    runs-on: ubuntu-latest
+
+    environment:
+      name: qa
+
+    concurrency:
+      group: terraform-qa
+      cancel-in-progress: false
+
+    steps:
+      - name: Terraform apply
+        run: |
+          echo "Environment: qa"
+          echo
+          echo "terraform apply"
+          echo
+          echo "QA applied successfully"
+
+
+  # ===========================================================================
+  # PROD
+  # ===========================================================================
+
+  validate-prod:
+    name: Validate prod
+
+    if: >
+      github.event_name != 'workflow_dispatch' ||
+      (
+        github.ref == 'refs/heads/main' &&
+        inputs.environment == 'prod'
+      )
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Terraform validate
+        run: |
+          echo "Environment: prod"
+          echo "Directory: infra/prod"
+          echo "Workspace: nextech-prod"
+          echo
+          echo "terraform init -backend=false"
+          echo "terraform validate"
+
+
+  plan-prod:
+    name: Plan prod
+    needs:
+      - validate-prod
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Terraform plan
+        run: |
+          echo "Environment: prod"
+          echo
+          echo "terraform plan"
+          echo
+          echo "+ 1 to add"
+          echo "~ 2 to change"
+          echo "- 0 to destroy"
+
+
+  apply-prod:
+    name: Apply prod
+    needs:
+      - plan-prod
+
+    if: github.event_name != 'pull_request'
+
+    runs-on: ubuntu-latest
+
+    environment:
+      name: prod
+
+    concurrency:
+      group: terraform-prod
+      cancel-in-progress: false
+
+    steps:
+      - name: Terraform apply
+        run: |
+          echo "Environment: prod"
+          echo
+          echo "terraform apply"
+          echo
+          echo "PROD applied successfully"
