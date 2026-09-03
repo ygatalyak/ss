@@ -1,3 +1,4 @@
+```yaml
 name: Terraform CI/CD
 
 on:
@@ -23,16 +24,22 @@ on:
 permissions:
   contents: read
 
-jobs:
-  terraform:
-    name: Terraform - ${{ matrix.environment }}
 
-    # Manual execution is allowed only from main.
-    if: ${{ github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
+jobs:
+
+  # ===========================================================================
+  # VALIDATE
+  # ===========================================================================
+  validate:
+    name: Validate - ${{ matrix.environment }}
+
+    # Manual execution only from main
+    if: >
+      github.event_name != 'workflow_dispatch' ||
+      github.ref == 'refs/heads/main'
 
     strategy:
       fail-fast: false
-
       matrix:
         environment: ${{ fromJSON(
           github.event_name == 'workflow_dispatch'
@@ -40,15 +47,111 @@ jobs:
           || '["dev","qa","prod"]'
           ) }}
 
-    uses: ./.github/workflows/terraform-environment.yml
+    runs-on: ubuntu-latest
 
-    with:
-      environment: ${{ matrix.environment }}
-      directory: infra/${{ matrix.environment }}
-      workspace: nextech-${{ matrix.environment }}
+    steps:
+      - name: Fake Terraform Validate
+        run: |
+          echo "=========================================="
+          echo "TERRAFORM VALIDATE"
+          echo "=========================================="
+          echo "Environment: ${{ matrix.environment }}"
+          echo "Directory:   infra/${{ matrix.environment }}"
+          echo "Workspace:   nextech-${{ matrix.environment }}"
+          echo
+          echo "terraform init -backend=false"
+          echo "terraform validate"
+          echo
+          echo "VALIDATION SUCCESSFUL"
 
-      # PR = validate + plan only
-      # push/main or manual = validate + plan + apply
-      apply: ${{ github.event_name != 'pull_request' }}
 
-    secrets: inherit
+  # ===========================================================================
+  # PLAN
+  # ===========================================================================
+  plan:
+    name: Plan - ${{ matrix.environment }}
+
+    needs:
+      - validate
+
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: ${{ fromJSON(
+          github.event_name == 'workflow_dispatch'
+          && format('["{0}"]', inputs.environment)
+          || '["dev","qa","prod"]'
+          ) }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fake Terraform Plan
+        run: |
+          echo "=========================================="
+          echo "TERRAFORM PLAN"
+          echo "=========================================="
+          echo "Environment: ${{ matrix.environment }}"
+          echo "Directory:   infra/${{ matrix.environment }}"
+          echo "Workspace:   nextech-${{ matrix.environment }}"
+          echo
+          echo "terraform plan"
+          echo
+          echo "Plan:"
+          echo "  + 2 to add"
+          echo "  ~ 1 to change"
+          echo "  - 0 to destroy"
+          echo
+          echo "PLAN SUCCESSFUL"
+
+
+  # ===========================================================================
+  # APPLY
+  # ===========================================================================
+  apply:
+    name: Apply - ${{ matrix.environment }}
+
+    needs:
+      - plan
+
+    # PR = no apply
+    # push to main / manual = apply
+    if: github.event_name != 'pull_request'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: ${{ fromJSON(
+          github.event_name == 'workflow_dispatch'
+          && format('["{0}"]', inputs.environment)
+          || '["dev","qa","prod"]'
+          ) }}
+
+    runs-on: ubuntu-latest
+
+    # GitHub Environment controls approval:
+    #
+    # dev  -> no reviewers -> automatic
+    # qa   -> required reviewer -> waits
+    # prod -> required reviewer -> waits
+    environment:
+      name: ${{ matrix.environment }}
+
+    concurrency:
+      group: terraform-${{ matrix.environment }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Fake Terraform Apply
+        run: |
+          echo "=========================================="
+          echo "TERRAFORM APPLY"
+          echo "=========================================="
+          echo "Environment: ${{ matrix.environment }}"
+          echo "Directory:   infra/${{ matrix.environment }}"
+          echo "Workspace:   nextech-${{ matrix.environment }}"
+          echo
+          echo "terraform apply"
+          echo
+          echo "APPLY SUCCESSFUL"
+```
