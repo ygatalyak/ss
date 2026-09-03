@@ -1,0 +1,154 @@
+name: Terraform Stage
+
+on:
+  workflow_call:
+
+    inputs:
+
+      environment:
+        description: Environment name
+        required: true
+        type: string
+
+      stage:
+        description: Terraform stage
+        required: true
+        type: string
+
+      run_id:
+        description: Terraform Cloud run ID
+        required: false
+        type: string
+        default: ""
+
+    outputs:
+
+      run_id:
+        description: Terraform Cloud run ID
+        value: ${{ jobs.validate-or-plan.outputs.run_id }}
+
+
+jobs:
+
+  # ===========================================================================
+  # VALIDATE / PLAN
+  # ===========================================================================
+
+  validate-or-plan:
+
+    if: inputs.stage != 'apply'
+
+    name: ${{ inputs.stage }} ${{ inputs.environment }}
+
+    runs-on: ubuntu-latest
+
+    outputs:
+      run_id: ${{ steps.plan.outputs.run_id }}
+
+    steps:
+
+      - name: Show configuration
+        run: |
+          echo "Environment : ${{ inputs.environment }}"
+          echo "Stage       : ${{ inputs.stage }}"
+          echo "Directory   : infra/${{ inputs.environment }}"
+          echo "Workspace   : nextech-${{ inputs.environment }}"
+
+
+      # -----------------------------------------------------------------------
+      # VALIDATE
+      # -----------------------------------------------------------------------
+
+      - name: Terraform validate
+        if: inputs.stage == 'validate'
+        run: |
+          echo "========================================"
+          echo "TERRAFORM VALIDATE"
+          echo "========================================"
+
+          echo
+          echo "terraform init -backend=false"
+          echo "terraform validate"
+
+          echo
+          echo "Validation successful"
+
+
+      # -----------------------------------------------------------------------
+      # PLAN
+      # -----------------------------------------------------------------------
+
+      - name: Terraform plan
+        if: inputs.stage == 'plan'
+        id: plan
+        run: |
+          echo "========================================"
+          echo "TERRAFORM PLAN"
+          echo "========================================"
+
+          echo
+          echo "terraform plan"
+
+          echo
+          echo "Plan:"
+          echo "  + 2 to add"
+          echo "  ~ 1 to change"
+          echo "  - 0 to destroy"
+
+          RUN_ID="fake-run-${{ inputs.environment }}-${{ github.run_id }}"
+
+          echo
+          echo "Terraform Cloud run:"
+          echo "$RUN_ID"
+
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+
+
+  # ===========================================================================
+  # APPLY
+  # ===========================================================================
+
+  apply:
+
+    if: inputs.stage == 'apply'
+
+    name: apply ${{ inputs.environment }}
+
+    runs-on: ubuntu-latest
+
+    # GitHub Environment handles approvals.
+    #
+    # dev  -> no required reviewers
+    # qa   -> required reviewer
+    # prod -> required reviewer
+    environment:
+      name: ${{ inputs.environment }}
+
+    concurrency:
+      group: terraform-${{ inputs.environment }}
+      cancel-in-progress: false
+
+    steps:
+
+      - name: Show configuration
+        run: |
+          echo "Environment : ${{ inputs.environment }}"
+          echo "Directory   : infra/${{ inputs.environment }}"
+          echo "Workspace   : nextech-${{ inputs.environment }}"
+          echo "Run ID      : ${{ inputs.run_id }}"
+
+
+      - name: Terraform apply
+        run: |
+          echo "========================================"
+          echo "TERRAFORM APPLY"
+          echo "========================================"
+
+          echo
+          echo "terraform apply"
+          echo
+          echo "Applying Terraform Cloud run:"
+          echo "${{ inputs.run_id }}"
+
+          echo
+          echo "Apply successful"
