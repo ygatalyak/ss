@@ -1,4 +1,3 @@
-```yaml
 name: Terraform CI/CD
 
 on:
@@ -154,4 +153,3 @@ jobs:
           echo "terraform apply"
           echo
           echo "APPLY SUCCESSFUL"
-```
