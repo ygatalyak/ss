@@ -1,0 +1,183 @@
+
+name: Terraform CI/CD
+
+on:
+  pull_request:
+    branches:
+      - main
+
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
+
+permissions:
+  contents: read
+
+
+jobs:
+
+  # ===========================================================================
+  # DEV
+  # ===========================================================================
+
+  validate-dev:
+    name: Validate dev
+
+    if: >
+      github.event_name != 'workflow_dispatch' ||
+      (
+        github.ref == 'refs/heads/main' &&
+        inputs.environment == 'dev'
+      )
+
+    uses: ./.github/workflows/terraform-stage.yml
+
+    with:
+      environment: dev
+      stage: validate
+
+
+  plan-dev:
+    name: Plan dev
+
+    needs:
+      - validate-dev
+
+    uses: ./.github/workflows/terraform-stage.yml
+
+    with:
+      environment: dev
+      stage: plan
+
+
+  apply-dev:
+    name: Apply dev
+
+    needs:
+      - plan-dev
+
+    if: >
+      github.event_name != 'pull_request' &&
+      needs.plan-dev.result == 'success'
+
+    uses: ./.github/workflows/terraform-stage.yml
+
+    with:
+      environment: dev
+      stage: apply
+      run_id: ${{ needs.plan-dev.outputs.run_id }}
+
+
+  # ===========================================================================
+  # QA
+  # ===========================================================================
+
+  validate-qa:
+    name: Validate qa
+
+    if: >
+      github.event_name != 'workflow_dispatch' ||
+      (
+        github.ref == 'refs/heads/main' &&
+        inputs.environment == 'qa'
+      )
+
+    uses: ./.github/workflows/terraform-stage.yml
+
+    with:
+      environment: qa
+      stage: validate
+
+
+  plan-qa:
+    name: Plan qa
+
+    needs:
+      - validate-qa
+
+    uses: ./.github/workflows/terraform-stage.yml
+
+    with:
+      environment: qa
+      stage: plan
+
+
+  apply-qa:
+    name: Apply qa
+
+    needs:
+      - plan-qa
+
+    if: >
+      github.event_name != 'pull_request' &&
+      needs.plan-qa.result == 'success'
+
+    uses: ./.github/workflows/terraform-stage.yml
+
+    with:
+      environment: qa
+      stage: apply
+      run_id: ${{ needs.plan-qa.outputs.run_id }}
+
+
+  # ===========================================================================
+  # PROD
+  # ===========================================================================
+
+  validate-prod:
+    name: Validate prod
+
+    if: >
+      github.event_name != 'workflow_dispatch' ||
+      (
+        github.ref == 'refs/heads/main' &&
+        inputs.environment == 'prod'
+      )
+
+    uses: ./.github/workflows/terraform-stage.yml
+
+    with:
+      environment: prod
+      stage: validate
+
+
+  plan-prod:
+    name: Plan prod
+
+    needs:
+      - validate-prod
+
+    uses: ./.github/workflows/terraform-stage.yml
+
+    with:
+      environment: prod
+      stage: plan
+
+
+  apply-prod:
+    name: Apply prod
+
+    needs:
+      - plan-prod
+
+    if: >
+      github.event_name != 'pull_request' &&
+      needs.plan-prod.result == 'success'
+
+    uses: ./.github/workflows/terraform-stage.yml
+
+    with:
+      environment: prod
+      stage: apply
+      run_id: ${{ needs.plan-prod.outputs.run_id }}
